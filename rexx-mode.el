@@ -1,16 +1,17 @@
 ;;;
 ;;; FILE
-;;;	rexx-mode.el	V1.1
+;;;	rexx-mode.el	V1.2
 ;;;
 ;;;	Copyright (C) 1993 by Anders Lindgren.
+;;;     Updates by Pierre Rouleau
 ;;;
 ;;;	This file is NOT part of GNU Emacs (yet).
 ;;;
 ;;;
 ;;; DISTRIBUTION
 ;;;	REXX-mode is free software; you can redistribute it and/or modify
-;;;	it under the terms of the GNU General Public License as published 
-;;;	by the Free Software Foundation; either version 1, or (at your 
+;;;	it under the terms of the GNU General Public License as published
+;;;	by the Free Software Foundation; either version 1, or (at your
 ;;;	option) any later version.
 ;;;
 ;;;	GNU Emacs is distributed in the hope that it will be useful,
@@ -56,6 +57,12 @@
 ;;;	       	     )
 ;;;	       auto-mode-alist))
 ;;;
+;;;    Since version V1.2, these values are user-options you
+;;;    can customize in the `rexx' customization group.
+;;;    For that, type:  M-x customize-group rexx RET
+;;;
+;;;
+;;;
 ;;; HISTORY
 ;;;	93-01-07 V0.1 ALi	Works for the first time.
 ;;;	92-01-11 V0.2 ALi	rexx-calc-indent totally rewritten.
@@ -76,33 +83,45 @@
 ;;;				New rexx-newline-and-indent added.
 ;;;	93-03-20      ALi	 A serious bug in the routine for checking
 ;;;				strings and comments found and fixed.
-;;;                              V1.0 Relesed!	
+;;;                             V1.0 Released!
 ;;;
 ;;;     01-01-01 V1.1 JP         font-lock support added
-;;;
+;;;     21-01-23 V1.2 PRouleau   Support for customization
 
 
 (provide 'rexx-mode)
 (autoload 'rexx-debug "rexx-debug" "REXX source level debugger" t)
 
-(defconst rexx-indent 2
-  "*This variable contains the indentation in rexx-mode.")
+(defgroup rexx nil
+  "Controls aspects of REXX editing."
+  :group 'languages)
 
-(defconst rexx-end-indent 0
-  "*This variable indicates the relative position of the \"end\" in REXX mode.")
+(defcustom rexx-indent 2
+  "Defines the indentation in rexx-mode."
+  :group 'rexx
+  :type 'integer)
 
-(defconst rexx-cont-indent 2
-  "*This variable indicates how far a continued line shall be intended.")
+(defcustom rexx-end-indent 0
+  "Defines the relative position of the \"end\" in REXX mode."
+  :group 'rexx
+  :type 'integer)
 
-(defconst rexx-comment-col 32
-  "*This variable gives the desired comment column 
-for comments to the right of text.")
+(defcustom rexx-cont-indent 2
+  "Defines how far a continued line shall be intended."
+  :group 'rexx
+  :type 'integer)
 
-(defconst rexx-tab-always-indent t
+(defconst rexx-comment-col 32           ; TODO: this is not used, remove?
+  "Defines the desired comment column for comments to the right of text.")
+
+(defcustom rexx-tab-always-indent t
   "*Non-nil means TAB in REXX mode should always reindent the current line,
-regardless of where in the line point is when the TAB command is used.")
+regardless of where in the line point is when the TAB command is used."
+  :group 'rexx
+  :type 'boolean
+  :safe #'booleanp)
 
-(defconst rexx-special-regexp 
+(defconst rexx-special-regexp
   ".*\\(,\\|then\\|else\\)[ \t]*\\(/\\*.*\\*/\\)?[ \t]*$"
   "*Regular expression for parsing lines which shall be followed by
 a extra indention")
@@ -335,7 +354,7 @@ a extra indention")
 
 ;; Level 1 - comments and strings
 (setq rexx-font-lock-keywords-1 nil
-;  (list "" '(0 default nil)) 
+;  (list "" '(0 default nil))
   )
 
 ;; Level 2 - keywords and builtin functions
@@ -392,7 +411,7 @@ a extra indention")
       (list
 	"^\\(\\<.*\\>\\):" '(1 font-lock-type-face nil))
       )
-    
+
     )
   )
 
@@ -414,7 +433,7 @@ Variables controlling indentation style:
 	The indention for lines following \"then\", \"else\" and \",\"
 	(continued) lines.
  rexx-tab-always-indent
-	Non-nil means TAB in REXX mode should always reindent the current 
+	Non-nil means TAB in REXX mode should always reindent the current
 	line, regardless of where in the line the point is when the TAB
 	command is used.
 
@@ -476,7 +495,7 @@ table to convert all REXX keywords into upper case."
   ;; font-lock vars
   (message "setting font-lock")
   (make-local-variable 'font-lock-defaults)
-  (setq font-lock-defaults 
+  (setq font-lock-defaults
     '((rexx-font-lock-keywords-1 rexx-font-lock-keywords-2
 	rexx-font-lock-keywords-3) nil t ((?_ . "w"))
        )
@@ -549,7 +568,7 @@ Return the amount the indentation changed by."
       (save-excursion (setq state (rexx-inside-comment-or-string)))
       (cond ((or (nth 3 state) (nth 4 state))
 	     (nth 4 state))	;; Inside a comment or string
-	    (t	
+	    (t
 	     ;; Find line to indent current line after.
 	     (rexx-backup-to-noncomment 1)
 	     (beginning-of-line)
@@ -559,7 +578,7 @@ Return the amount the indentation changed by."
 	       (beginning-of-line)
 	       (setq beg (rexx-find-environment)))
 
-	     (if (> (point) block)		 
+	     (if (> (point) block)
 		 ;; Check to see if we shall make a special indention
 		 (if (looking-at rexx-special-regexp)
 		     (+ (current-indentation) rexx-cont-indent)
@@ -657,7 +676,7 @@ It returns the state from parse-partial-sexp for the search that
 terminated on the points position"
   (let ((origpoint (point))
 	state)
-    (save-excursion 
+    (save-excursion
       (goto-char 1)
       (while (> origpoint (point))
 	(setq state (parse-partial-sexp (point) origpoint 0))))
@@ -667,7 +686,7 @@ terminated on the points position"
   "New newline-and-indent which expands abbrevs before running
 a regular newline-and-indent."
   (interactive)
-  (if abbrev-mode 
+  (if abbrev-mode
       (expand-abbrev))
   (newline-and-indent))
 
@@ -676,6 +695,6 @@ a regular newline-and-indent."
 before running a regular newline-and-indent."
   (interactive)
   (rexx-indent-command)
-  (if abbrev-mode 
+  (if abbrev-mode
       (expand-abbrev))
   (newline-and-indent))
