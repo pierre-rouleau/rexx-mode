@@ -98,17 +98,17 @@
 
 (defcustom rexx-indent 2
   "Defines the indentation in rexx-mode."
-  :group 'rexx
+  :group 'rexx-mode
   :type 'integer)
 
 (defcustom rexx-end-indent 0
   "Defines the relative position of the \"end\" in REXX mode."
-  :group 'rexx
+  :group 'rexx-mode
   :type 'integer)
 
 (defcustom rexx-cont-indent 2
   "Defines how far a continued line shall be intended."
-  :group 'rexx
+  :group 'rexx-mode
   :type 'integer)
 
 (defconst rexx-comment-col 32           ; TODO: this is not used, remove?
@@ -117,7 +117,7 @@
 (defcustom rexx-tab-always-indent t
   "*Non-nil means TAB in REXX mode should always reindent the current line,
 regardless of where in the line point is when the TAB command is used."
-  :group 'rexx
+  :group 'rexx-mode
   :type 'boolean
   :safe #'booleanp)
 
