@@ -92,8 +92,8 @@
 (provide 'rexx-mode)
 (autoload 'rexx-debug "rexx-debug" "REXX source level debugger" t)
 
-(defgroup rexx nil
-  "Controls aspects of REXX editing."
+(defgroup rexx-mode nil
+  "Controls aspects of REXX editing when using rexx-mode."
   :group 'languages)
 
 (defcustom rexx-indent 2
