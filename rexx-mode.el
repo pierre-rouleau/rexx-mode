@@ -1,95 +1,103 @@
-;;;
-;;; FILE
-;;;	rexx-mode.el	V1.2
-;;;
-;;;	Copyright (C) 1993 by Anders Lindgren.
-;;;     Updates by Pierre Rouleau
-;;;
-;;;	This file is NOT part of GNU Emacs (yet).
-;;;
-;;;
-;;; DISTRIBUTION
-;;;	REXX-mode is free software; you can redistribute it and/or modify
-;;;	it under the terms of the GNU General Public License as published
-;;;	by the Free Software Foundation; either version 1, or (at your
-;;;	option) any later version.
-;;;
-;;;	GNU Emacs is distributed in the hope that it will be useful,
-;;;	but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;;	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;;;	GNU General Public License for more details.
-;;;
-;;;	You should have received a copy of the GNU General Public
-;;;	License along with GNU Emacs; see the file COPYING.  If not,
-;;;	write to the Free Software Foundation, 675 Mass Ave, Cambridge,
-;;;	MA 02139, USA.
-;;;
-;;;
-;;; AUTHOR
-;;;	Anders Lindgren, d91ali@csd.uu.se
-;;;
-;;;         Abbrevationtable due to:
-;;;	Johan Bergkvist, nv91-jbe@nada.kth.se
-;;;
-;;;         Font locking due to:
-;;;     James Perrin, james.perrin@ntlworld.com
-;;;
-;;;
-;;; USAGE
-;;;	This file contains code for a GNU Emacs major mode for
-;;;	editing REXX program files.
-;;;
-;;;     Type C-h m in Emacs for information on how to configurate
-;;;	the rexx-mode, or see rexx-mode.doc.
-;;;
-;;;	Put the following lines into your .emacs and rexx-mode
-;;;	will be automatically loaded when editing a REXX program.
-;;;	If rexx-mode shall be used for files with other extensions
-;;;	you can create more (cons ...) lines with these extensions.
-;;;
-;;;	(autoload 'rexx-mode "rexx-mode" "REXX mode" nil t)
-;;;	(setq auto-mode-alist
-;;;	      (append
-;;;	       (list (cons "\\.rexx$"  'rexx-mode)
-;;;		     (cons "\\.elx$"   'rexx-mode)
-;;;		     (cons "\\.ncomm$" 'rexx-mode)
-;;;		     (cons "\\.cpr$"   'rexx-mode)
-;;;	       	     )
-;;;	       auto-mode-alist))
-;;;
-;;;    Since version V1.2, these values are user-options you
-;;;    can customize in the `rexx' customization group.
-;;;    For that, type:  M-x customize-group rexx RET
-;;;
-;;;
-;;;
-;;; HISTORY
-;;;	93-01-07 V0.1 ALi	Works for the first time.
-;;;	92-01-11 V0.2 ALi	rexx-calc-indent totally rewritten.
-;;;     93-03-08 V0.3 JB        rexx-indent-and-newline-and-indent added.
-;;;                             Abbrev-table containing 173 entries created.
-;;;                             rexx-check-expansion added.
-;;;                             rexx-mode enables use of abbrev-table.
-;;;	93-03-15 V0.4 ALi	abbrev-mode removed, better to call
-;;;				 (abbrev-mode 1) from the hook.
-;;;				case-fold-search set to t to recognize capital
-;;;				 letters in keywords.
-;;;				Old (setq case-fold-search nil) removed which
-;;;				 prevented the recognition of END.
-;;;				rexx-indent-and-newline-and-indent renamed to
-;;;				 rexx-indent-newline-indent.
-;;;				rexx-i-n-i now only expands abbrevs when
-;;;				 buffer is in abbrev-mode.
-;;;				New rexx-newline-and-indent added.
-;;;	93-03-20      ALi	 A serious bug in the routine for checking
-;;;				strings and comments found and fixed.
-;;;                             V1.0 Released!
-;;;
-;;;     01-01-01 V1.1 JP         font-lock support added
-;;;     21-01-23 V1.2 PRouleau   Support for customization
+;;; rexx-mode.el --- REXX Programming Language Support  -*- lexical-binding: t; -*-
+;;
+;;; Commentary:
+;;
+;; FILE
+;;	rexx-mode.el	V1.2
+;;
+;;	Copyright (C) 1993 by Anders Lindgren.
+;;     Updates by Pierre Rouleau
+;;
+;;	This file is NOT part of GNU Emacs (yet).
+;;
+;;
+;; DISTRIBUTION
+;;	REXX-mode is free software; you can redistribute it and/or modify
+;;	it under the terms of the GNU General Public License as published
+;;	by the Free Software Foundation; either version 1, or (at your
+;;	option) any later version.
+;;
+;;	GNU Emacs is distributed in the hope that it will be useful,
+;;	but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;	GNU General Public License for more details.
+;;
+;;	You should have received a copy of the GNU General Public
+;;	License along with GNU Emacs; see the file COPYING.  If not,
+;;	write to the Free Software Foundation, 675 Mass Ave, Cambridge,
+;;	MA 02139, USA.
+;;
+;;
+;; AUTHOR
+;;	Anders Lindgren, d91ali@csd.uu.se
+;;
+;;         Abbrevationtable due to:
+;;	Johan Bergkvist, nv91-jbe@nada.kth.se
+;;
+;;         Font locking due to:
+;;     James Perrin, james.perrin@ntlworld.com
+;;
+;;
+;; USAGE
+;;	This file contains code for a GNU Emacs major mode for
+;;	editing REXX program files.
+;;
+;;     Type C-h m in Emacs for information on how to configurate
+;;	the rexx-mode, or see rexx-mode.doc.
+;;
+;;	Put the following lines into your .emacs and rexx-mode
+;;	will be automatically loaded when editing a REXX program.
+;;	If rexx-mode shall be used for files with other extensions
+;;	you can create more (cons ...) lines with these extensions.
+;;
+;;	(autoload 'rexx-mode "rexx-mode" "REXX mode" nil t)
+;;	(setq auto-mode-alist
+;;	      (append
+;;	       (list (cons "\\.rexx$"  'rexx-mode)
+;;		     (cons "\\.elx$"   'rexx-mode)
+;;		     (cons "\\.ncomm$" 'rexx-mode)
+;;		     (cons "\\.cpr$"   'rexx-mode)
+;;	       	     )
+;;	       auto-mode-alist))
+;;
+;;    Since version V1.2, these values are user-options you
+;;    can customize in the `rexx' customization group.
+;;    For that, type:  M-x customize-group rexx RET
+;;
+;;
+;;
+;; HISTORY
+;;	93-01-07 V0.1 ALi	Works for the first time.
+;;	92-01-11 V0.2 ALi	rexx-calc-indent totally rewritten.
+;;      93-03-08 V0.3 JB        rexx-indent-and-newline-and-indent added.
+;;                              Abbrev-table containing 173 entries created.
+;;                              rexx-check-expansion added.
+;;                              rexx-mode enables use of abbrev-table.
+;;	93-03-15 V0.4 ALi	abbrev-mode removed, better to call
+;;				 (abbrev-mode 1) from the hook.
+;;				case-fold-search set to t to recognize capital
+;;				 letters in keywords.
+;;				Old (setq case-fold-search nil) removed which
+;;				 prevented the recognition of END.
+;;				rexx-indent-and-newline-and-indent renamed to
+;;				 rexx-indent-newline-indent.
+;;				rexx-i-n-i now only expands abbrevs when
+;;				 buffer is in abbrev-mode.
+;;				New rexx-newline-and-indent added.
+;;	93-03-20      ALi	 A serious bug in the routine for checking
+;;				strings and comments found and fixed.
+;;                             V1.0 Released!
+;;
+;;     01-01-01 V1.1 JP         font-lock support added
+;;     21-01-23 V1.2 PRouleau   Support for customization,
+;;                              using lexical binding,
+;;                              partial checkdoc compliance format update.
 
 
-(provide 'rexx-mode)
+
+
+;;; Code:
+
 (autoload 'rexx-debug "rexx-debug" "REXX source level debugger" t)
 
 (defgroup rexx-mode nil
@@ -97,7 +105,7 @@
   :group 'languages)
 
 (defcustom rexx-indent 2
-  "Defines the indentation in rexx-mode."
+  "Defines the indentation in `rexx-mode'."
   :group 'rexx-mode
   :type 'integer)
 
@@ -115,7 +123,8 @@
   "Defines the desired comment column for comments to the right of text.")
 
 (defcustom rexx-tab-always-indent t
-  "*Non-nil means TAB in REXX mode should always reindent the current line,
+  "Control tab key behaviour.
+Non-nil means TAB in REXX mode should always reindent the current line,
 regardless of where in the line point is when the TAB command is used."
   :group 'rexx-mode
   :type 'boolean
@@ -123,11 +132,10 @@ regardless of where in the line point is when the TAB command is used."
 
 (defconst rexx-special-regexp
   ".*\\(,\\|then\\|else\\)[ \t]*\\(/\\*.*\\*/\\)?[ \t]*$"
-  "*Regular expression for parsing lines which shall be followed by
-a extra indention")
+  "Regexp for parsing lines that shall be followed by extra indentation.")
 
 (defvar rexx-mode-map nil
-  "Keymap for rexx-mode.")
+  "Keymap for `rexx-mode'.")
 (if rexx-mode-map
     nil
   (setq rexx-mode-map (make-sparse-keymap))
@@ -157,7 +165,7 @@ a extra indention")
   (modify-syntax-entry ?\' "\"" rexx-mode-syntax-table))
 
 (defvar rexx-mode-abbrev-table nil
-  "*Abbrev table in use in rexx-mode buffers.")
+  "*Abbrev table in use in `rexx-mode' buffers.")
 
 (if rexx-mode-abbrev-table
     nil
@@ -340,16 +348,16 @@ a extra indention")
 
 ;; font-lock patterns
 (defvar rexx-font-lock-keywords nil
- "Expressions to highlight in V code mode")
+ "Expressions to highlight in V code mode.")
 
 (defvar rexx-font-lock-keywords-1 nil
- "Level 1 expressions to highlight in V code mode")
+ "Level 1 expressions to highlight in V code mode.")
 
 (defvar rexx-font-lock-keywords-2 nil
- "Level 2 expressions to highlight in V code mode")
+ "Level 2 expressions to highlight in V code mode.")
 
 (defvar rexx-font-lock-keywords-3 nil
- "Level 3 expressions to highlight in V code mode")
+ "Level 3 expressions to highlight in V code mode.")
 
 
 ;; Level 1 - comments and strings
@@ -444,13 +452,13 @@ indents correctly when you press RETURN.
 An extensive abbrevation table consisting of all the keywords of REXX are
 supplied. Expanded keywords are converted into upper case making it
 easier to distinguish them. To use this feature the buffer must be in
-abbrev-mode. (See example below.)
+mode `abbrev-mode'. (See example below.)
 
 Turning on REXX mode calls the value of the variable rexx-mode-hook with
 no args, if that value is non-nil.
 
 For example:
-(setq rexx-mode-hook '(lambda ()
+\(setq rexx-mode-hook '(lambda ()
 			(setq rexx-indent 4)
 			(setq rexx-end-indent 4)
 			(setq rexx-cont-indent 4)
@@ -633,8 +641,8 @@ If none found, return the beginning of buffer."
       (if cont (point) 1))))
 
 (defun rexx-calculate-indent-within-comment ()
-  "Return the indentation amount for line, assuming that
-the current line is to be regarded as part of a block comment."
+  "Return the indentation amount for line.
+Assumes that current line is to be regarded as part of a block comment."
   (let (end star-start)
     (save-excursion
       (beginning-of-line)
@@ -672,7 +680,7 @@ the current line is to be regarded as part of a block comment."
 
 (defun rexx-inside-comment-or-string ()
   "Check if the point is inside a comment or a string.
-It returns the state from parse-partial-sexp for the search that
+It returns the state from `parse-partial-sexp' for the search that
 terminated on the points position"
   (let ((origpoint (point))
 	state)
@@ -683,7 +691,8 @@ terminated on the points position"
     state))
 
 (defun rexx-indent-and-newline ()
-  "New newline-and-indent which expands abbrevs before running
+  "Indent and add a newline.
+New newline-and-indent which expands abbrevs before running
 a regular newline-and-indent."
   (interactive)
   (if abbrev-mode
@@ -691,10 +700,16 @@ a regular newline-and-indent."
   (newline-and-indent))
 
 (defun rexx-indent-newline-indent ()
-  "New newline-and-indent which expands abbrevs and indent the line
+  "Expand abbreviation, indent and insert newline.
+New newline-and-indent which expands abbrevs and indent the line
 before running a regular newline-and-indent."
   (interactive)
   (rexx-indent-command)
   (if abbrev-mode
       (expand-abbrev))
   (newline-and-indent))
+
+
+(provide 'rexx-mode)
+
+;;; rexx-mode.el ends here

@@ -1,55 +1,62 @@
-;;;
-;;; FILE
-;;;	rexx-debug.el	V1.0
-;;;
-;;;	Copyright (C) 1993 by Anders Lindgren.
-;;;
-;;;	This file is NOT part of GNU Emacs (yet).
-;;;
-;;; DISTRIBUTION
-;;;	REXX-debug is free software; you can redistribute it and/or modify
-;;;	it under the terms of the GNU General Public License as published 
-;;;	by the Free Software Foundation; either version 1, or (at your 
-;;;	option) any later version.
-;;;
-;;;	GNU Emacs is distributed in the hope that it will be useful,
-;;;	but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;;	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;;;	GNU General Public License for more details.
-;;;
-;;;	You should have received a copy of the GNU General Public
-;;;	License along with GNU Emacs; see the file COPYING.  If not,
-;;;	write to the Free Software Foundation, 675 Mass Ave, Cambridge,
-;;;	MA 02139, USA.
-;;;
-;;;
-;;; AUTHOR
-;;;	Anders Lindgren, d91ali@csd.uu.se
-;;;
-;;; USAGE
-;;;	To use this program, call "rexx-debug", enter a filename,
-;;;	or press return if you would like to debug the current file.
-;;;	Enter the arguments to the rexx program and press return.
-;;;	The output from the program and debuginformation will be
-;;;	shown in "*rexx-<name>*".
-;;;
-;;;	Very simple REXX source level debugger. Currently, the only thing
-;;;	it reallt does is reads the debug info and places the arrow
-;;;	on the correct line.
-;;;
-;;;	To use this program, the rexx script must be run in interactive
-;;;	debug mode. This is controlled by the '?' trace flag. You can
-;;;	for example place this line in the beginning of the script:
-;;;		trace ?r
-;;;
+;; rexx-debug.el --- REXX Debug support  -*- lexical-binding: t; -*-
+;;
+;; FILE
+;;	rexx-debug.el	V1.1
+;;
+;;	Copyright (C) 1993 by Anders Lindgren.
+;;     Updated by Pierre Rouleau -> V1.1
+;;
+;;	This file is NOT part of GNU Emacs (yet).
+;;
+;; DISTRIBUTION
+;;	REXX-debug is free software; you can redistribute it and/or modify
+;;	it under the terms of the GNU General Public License as published
+;;	by the Free Software Foundation; either version 1, or (at your
+;;	option) any later version.
+;;
+;;	GNU Emacs is distributed in the hope that it will be useful,
+;;	but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;	GNU General Public License for more details.
+;;
+;;	You should have received a copy of the GNU General Public
+;;	License along with GNU Emacs; see the file COPYING.  If not,
+;;	write to the Free Software Foundation, 675 Mass Ave, Cambridge,
+;;	MA 02139, USA.
+;;
+;;
+;; AUTHOR
+;;	Anders Lindgren, d91ali@csd.uu.se
+;;
+;; USAGE
+;;	To use this program, call "rexx-debug", enter a filename,
+;;	or press return if you would like to debug the current file.
+;;	Enter the arguments to the rexx program and press return.
+;;	The output from the program and debug information will be
+;;	shown in "*rexx-<name>*".
+;;
+;;	Very simple REXX source level debugger. Currently, the only thing
+;;	it really does is reads the debug info and places the arrow
+;;	on the correct line.
+;;
+;;	To use this program, the rexx script must be run in interactive
+;;	debug mode. This is controlled by the '?' trace flag. You can
+;;	for example place this line in the beginning of the script:
+;;		trace ?r
+;;
+
+;;; Commentary:
+;;
+
 ;;; HISTORY
-;;;	93-01-11 ALi Start of codeing based on comint-gdb
-;;;	93-01-15     Works very well, thank you!
-;;;	93-03-16     rxdb-command-name removed as local function.
-;;;
+;;	93-01-11 ALi Start of codeing based on comint-gdb
+;;	93-01-15     Works very well, thank you!
+;;	93-03-16     rxdb-command-name removed as local function.
+;;      2021-01-25   Fixed byte compiler warning for Emacs 26.3, use lexical binding.
 
 (require 'comint)
-(provide 'rexx-debug)
+
+;;; Code:
 
 (defvar rxdb-lineno-regexp "^ +[0-9]+ +\\*\\-\\* "
   "A regexp to recognize a linenumber in the rexx debugger output stream.")
@@ -60,14 +67,21 @@
 (defvar rxdb-command-name "rx"
   "Pathname for REXX interpreter.")
 
-(defvar rxdb-mode-map nil
-  "Keymap for rexx-debug-mode.")
-
-(if rxdb-mode-map
-    nil
-  (setq rxdb-mode-map (full-copy-sparse-keymap comint-mode-map))
-  (define-key rxdb-mode-map "\C-l" 'rxdb-refresh))
+(defvar rxdb-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map comint-mode-map)
+    (define-key map "\C-l" 'rxdb-refresh)
+    map)
+  "Local keymap for rexx-debug-mode.")
 
+
+;; TODO: document and verify use of variables
+(defvar-local rxdb-last-frame nil)
+(defvar-local rxdb-last-frame-displayed-p nil)
+(defvar-local rxdb-delete-prompt-marker nil)
+(defvar current-rxdb-buffer nil)
+(defvar current-rxdb-file nil)
+
 (defun rxdb-mode ()
   "Major mode for interacting with an inferior rexx process.
 
@@ -83,7 +97,7 @@ Customisation: Entry to this mode runs the hooks comint-mode-hook and
 rxdb-mode-hook (in that order).
 
 For example:
-(setq rxdb-mode-hook '(lambda ()
+\(setq rxdb-mode-hook '(lambda ()
 		        (setq rxdb-command-name \"/usr/local/bin/rexx\")
 			(define-local-key \"key\" 'favorite-command)
 			))
@@ -114,7 +128,7 @@ and source-file directory.
   (let* ((file (file-name-nondirectory path))
 	 (rxdb-buffer (concat "*rexx-" file "*"))
 	 (rxdb-window (get-buffer-window rxdb-buffer)))
-    (if rxdb-window 
+    (if rxdb-window
 	(select-window rxdb-window)
 	(switch-to-buffer rxdb-buffer))
     (if (comint-check-proc rxdb-buffer) nil
@@ -125,7 +139,7 @@ and source-file directory.
 		   (concat file " " args))
       (rxdb-mode)
       (set-process-filter (get-buffer-process (current-buffer)) 'rxdb-filter)
-      (set-process-sentinel (get-buffer-process (current-buffer)) 
+      (set-process-sentinel (get-buffer-process (current-buffer))
 			    'rxdb-sentinel))
     (rxdb-set-buffer path)))
 
@@ -135,7 +149,7 @@ and source-file directory.
 	 (if path
 	     (setq current-rxdb-file path)))))
 
-;; This function is responsible for inserting output from the rexx 
+;; This function is responsible for inserting output from the rexx
 ;; debugger into the buffer. It records the linenumber for the
 ;; placement of the arrow.
 (defun rxdb-filter (proc string)
@@ -150,9 +164,9 @@ and source-file directory.
 	  (progn
 	    (if (string-match rxdb-lineno-regexp string)
 		(progn
-		  (setq rxdb-last-frame 
-			(string-to-int (substring string 0 
-						  (string-match 
+		  (setq rxdb-last-frame
+			(string-to-number (substring string 0
+						  (string-match
 						   "\\*\\-\\*" string 1))))
 		  (setq rxdb-last-frame-displayed-p nil)))
 	    (rxdb-filter-insert proc (substring string 0 (1+ end)))
@@ -163,14 +177,12 @@ and source-file directory.
 (defun rxdb-filter-insert (proc string)
   (let ((moving (= (point) (process-mark proc)))
 	(output-after-point (< (point) (process-mark proc)))
-	(old-buffer (current-buffer))
-	start)
+	(old-buffer (current-buffer)))
     (set-buffer (process-buffer proc))
     (unwind-protect
 	(save-excursion
 	  ;; Insert the text, moving the process-marker.
 	  (goto-char (process-mark proc))
-	  (setq start (point))
 	  (insert string)
 	  (set-marker (process-mark proc) (point))
 	  (rxdb-maybe-delete-prompt)
@@ -245,11 +257,11 @@ and source-file directory.
   (let* ((buffer (find-file-noselect true-file))
 	 (window (display-buffer buffer t))
 	 (pos))
-    (save-excursion
-      (set-buffer buffer)
+    (with-current-buffer buffer
       (save-restriction
 	(widen)
-	(goto-line line)
+        (goto-char (point-min))
+        (forward-line (1- line))
 	(setq pos (point))
 	(setq overlay-arrow-string "=>")
 	(or overlay-arrow-position
@@ -271,20 +283,20 @@ and source-file directory.
 	       (concat command "\n")))
 
 (defun rxdb-maybe-delete-prompt ()
-  (if (and rxdb-delete-prompt-marker
+  (when (and rxdb-delete-prompt-marker
 	   (> (point-max) (marker-position rxdb-delete-prompt-marker)))
-      (let (start)
-	(goto-char rxdb-delete-prompt-marker)
-	(setq start (point))
-	(beginning-of-line)
-	(delete-region (point) start)
-	(setq rxdb-delete-prompt-marker nil))))
+    (goto-char rxdb-delete-prompt-marker)
+    (let ((start (point)))
+      (beginning-of-line)
+      (delete-region (point) start )
+      (setq rxdb-delete-prompt-marker nil))))
 
 
 (defvar rxdb-commands nil
   "List of strings or functions used by send-rxdb-command.
 It is for customization by you.")
 
+;; TODO: Fix following function where rxdb-read-address is unknown
 (defun send-rxdb-command (arg)
   "This command reads the core-address where the cursor is positioned.  It
  then inserts this ADDR at the end of the rxdb buffer.  A numeric arg
@@ -304,4 +316,9 @@ It is for customization by you.")
 	  (t (setq comm addr)))
     (switch-to-buffer current-rxdb-buffer)
     (goto-char (point-max))
-    (insert-string comm)))
+    (insert comm)))
+
+
+(provide 'rexx-debug)
+
+;;; rexx-debug.el ends here
