@@ -105,17 +105,29 @@
   :group 'languages)
 
 (defcustom rexx-indent 2
-  "Defines the indentation in `rexx-mode'."
+  "Defines the indentation in `rexx-mode'.
+The basic indentation for do-blocks."
   :group 'rexx-mode
   :type 'integer)
 
 (defcustom rexx-end-indent 0
-  "Defines the relative position of the \"end\" in REXX mode."
+  "Defines the The relative offset of the \"end\" statement in REXX mode.
+
+A value of 0 places it in the same column as the statements of the
+block. Setting it to the same value as `rexx-indent' places the
+\"end\" under the do-line."
   :group 'rexx-mode
   :type 'integer)
 
 (defcustom rexx-cont-indent 2
-  "Defines how far a continued line shall be intended."
+  "Defines how far a continued line shall be intended.
+
+The indention for lines following \"then\", \"else\" and \",\"
+(continued) lines.
+
+If you have set `rexx-end-indent' to a nonzero value, you probably want to
+remap RETURN to `rexx-indent-newline-indent'. It makes sure that lines
+indents correctly when you press RETURN."
   :group 'rexx-mode
   :type 'integer)
 
