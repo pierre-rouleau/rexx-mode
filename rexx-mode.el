@@ -6,7 +6,7 @@
 ;;	rexx-mode.el	V1.2
 ;;
 ;;	Copyright (C) 1993 by Anders Lindgren.
-;;     Updates by Pierre Rouleau
+;;      Latest updates by Pierre Rouleau
 ;;
 ;;	This file is NOT part of GNU Emacs (yet).
 ;;
@@ -92,9 +92,11 @@
 ;;     21-01-23 V1.2 PRouleau   Support for customization,
 ;;                              using lexical binding,
 ;;                              partial checkdoc compliance format update.
+;;                              Add Speedbar support for procedures.
 
 
-
+;;; Dependencies
+(require 'speedbar)
 
 ;;; Code:
 
@@ -438,6 +440,20 @@ regardless of where in the line point is when the TAB command is used."
 (setq rexx-font-lock-keywords rexx-font-lock-keywords)
 
 
+;; ------------ speedbar additions ------------
+
+(defcustom rexx-imenu-generic-expression
+  (list
+   '("procedure" "^\\(\\<[[:alpha:]][[:alnum:]]+\\>\\):" 1))
+  "Value for `imenu-generic-expression' in Rexx mode."
+  :type 'regexp
+  :group 'rexx-mode)
+
+(speedbar-add-supported-extension '(".rex"
+                                    ".rexx"))
+
+;; ----------------------------------------------
+
 (defun rexx-mode ()
 "Major mode for editing REXX code.
 \\{rexx-mode-map}
@@ -511,6 +527,10 @@ table to convert all REXX keywords into upper case."
   (setq comment-start-skip "/\\*+ *")
   (make-local-variable 'comment-indent-function)
   (setq comment-indent-function 'rexx-comment-indent)
+
+  ;; imenu and Speedbar support
+  (make-local-variable 'imenu-generic-expression)
+  (setq imenu-generic-expression rexx-imenu-generic-expression)
 
   ;; font-lock vars
   (message "setting font-lock")
