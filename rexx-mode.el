@@ -93,6 +93,8 @@
 ;;                              using lexical binding,
 ;;                              partial checkdoc compliance format update.
 ;;                              Add Speedbar support for procedures.
+;;                              Add commands to move to next/previous
+;;                              procedure(s).
 
 
 ;;; Dependencies
@@ -155,9 +157,10 @@ regardless of where in the line point is when the TAB command is used."
   (setq rexx-mode-map (make-sparse-keymap))
   (define-key rexx-mode-map "\t"   'rexx-indent-command)
   (define-key rexx-mode-map "\177" 'backward-delete-char-untabify)
-  (define-key rexx-mode-map "\C-c\C-p" 'rexx-find-matching-do)
+  (define-key rexx-mode-map "\C-c\C-d" 'rexx-find-matching-do)
   (define-key rexx-mode-map "\C-c\C-c" 'rexx-debug)
-  )
+  (define-key rexx-mode-map "\C-c\C-n" 'rexx-goto-next-procedure)
+  (define-key rexx-mode-map "\C-c\C-p" 'rexx-goto-previous-procedure))
 
 (defvar rexx-mode-syntax-table nil
   "Syntax table in use in REXX-mode buffers.")
@@ -440,19 +443,136 @@ regardless of where in the line point is when the TAB command is used."
 (setq rexx-font-lock-keywords rexx-font-lock-keywords)
 
 
-;; ------------ speedbar additions ------------
-
-(defcustom rexx-imenu-generic-expression
-  (list
-   '("procedure" "^\\(\\<[[:alpha:]][[:alnum:]]+\\>\\):" 1))
-  "Value for `imenu-generic-expression' in Rexx mode."
+;; --------------------------------------------
+(defcustom rexx-regexp-for-procedure
+  "^\\(\\<[[:alpha:]][[:alnum:]!?\\._]+\\>\\):"
+  "Regexp used to detect REXX procedure."
   :type 'regexp
   :group 'rexx-mode)
 
-(speedbar-add-supported-extension '(".rex"
-                                    ".rexx"))
+;; ------------ speedbar additions ------------
 
-;; ----------------------------------------------
+(defconst rexx-imenu-generic-expression
+  (list
+   (list nil rexx-regexp-for-procedure 1))
+  "Value for `imenu-generic-expression' in Rexx mode.
+It uses the value of `rexx-regexp-for-procedure'.")
+
+(speedbar-add-supported-extension '(".rex"
+                                    ".rexx"
+                                    ".elx"
+                                    ".ncomm"
+                                    ".cpr"))
+
+;; --------- Navigation across procedures ----
+
+(defun rexx-point-in-comment-or-string (&optional move-fct)
+  "Return position of start of comment or string surrounding point.
+Return nil when point is outside comment and string.
+If MOVE-FCT is specified, call it before checking the state of point."
+  (save-excursion
+    (when move-fct
+      (funcall move-fct))
+    (nth 8 (parse-partial-sexp (point-min) (point)))))
+
+(defun rexx-goto-next-procedure (&optional n silent dont-push-mark)
+  "Move point to the Nth procedure forward.
+
+Search is controlled by the value of `rexx-regexp-for-procedure'
+user option.  Skip over procedure definitions inside comments or
+string.
+
+If no valid procedure definition is found, don't move point,
+issue an error describing the failure unless SILENT is non-nil,
+in which case the function returns nil on error and non-nil on
+success.  The error message states the number of instanced
+searched, the regexp used and the number of instances found.
+
+On success, the function push original position on the mark ring
+unless DONT-PUSH-MARK is non-nil.
+
+The command support shift-marking.  In terminal mode select a key
+binding that is not affected by the Shift key."
+  (interactive "^p")
+  (if (< n 0)
+      (rexx-goto-previous-procedure (abs n))
+    (let ((start-pos (point))
+          (count 0))
+      (condition-case err
+          (progn
+            (dotimes (_ n)
+              (while
+                  (progn
+                    (right-char)
+                    (re-search-forward rexx-regexp-for-procedure)
+                    ;; when searching forward point is left after the regexp
+                    ;; that might be inside a value which may be a string.
+                    ;; The check if we're in a docstring, check the state
+                    ;; for point at the beginning of the regexp, which is
+                    ;; the beginning of indentation.
+                    (rexx-point-in-comment-or-string
+                     (function back-to-indentation))))
+              (setq count (1+ count)))
+            (back-to-indentation)
+            (unless dont-push-mark
+              (push-mark start-pos))
+            ;; on success return t, nil on failure if silent
+            t)
+        (search-failed
+         ;; restore original position when search failed
+         (goto-char start-pos)
+         (unless silent
+           (user-error "Found only %d of requested %d procedures.\n%s"
+                       count
+                       n
+                       err)))))))
+
+(defun rexx-goto-previous-procedure (&optional n silent dont-push-mark)
+  "Move point to the Nth procedure backward.
+
+Search is controlled by the value of `rexx-regexp-for-procedure'
+user option.  Skip over procedure definitions inside comments or
+string.
+
+If no valid procedure definition is found, don't move point,
+issue an error describing the failure unless SILENT is non-nil,
+in which case the function returns nil on error and non-nil on
+success.  The error message states the number of instanced
+searched, the regexp used and the number of instances found.
+
+On success, the function push original position on the mark ring
+unless DONT-PUSH-MARK is non-nil.
+
+The command support shift-marking.  In terminal mode select a key
+binding that is not affected by the Shift key."
+  (interactive "^p")
+  (if (< n 0)
+      (rexx-goto-next-procedure (abs n))
+    (let ((start-pos (point))
+          (count 0))
+      (condition-case err
+          (progn
+            (dotimes (_ n)
+              (while
+                  (progn
+                    (re-search-backward rexx-regexp-for-procedure)
+                    (rexx-point-in-comment-or-string)))
+              (setq count (1+ count)))
+            (back-to-indentation)
+            (unless dont-push-mark
+              (push-mark start-pos))
+            ;; on success return t, nil on failure if silent
+            t)
+        (search-failed
+         ;; restore original position when search failed
+         (goto-char start-pos)
+         (unless silent
+           (user-error "Found only %d of requested %d procedures.\n%s"
+                       count
+                       n
+                       err)))))))
+
+;; -------------------------------------------
 
 (defun rexx-mode ()
 "Major mode for editing REXX code.
